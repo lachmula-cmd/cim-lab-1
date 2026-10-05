@@ -1,12 +1,12 @@
 from __future__ import annotations
-
+import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import v2
 
 
 def build_transform(cfg, train: bool):
-    transforms = [v2.ToImage(), v2.ToDtype(dtype=None, scale=True)]
+    transforms = [v2.ToImage(), v2.ToDtype(dtype=torch.float32, scale=True)]
 
     # TODO: replace dtype=None with torch.float32 after importing torch.
     # This deliberate error gives you a first opportunity to inspect and repair

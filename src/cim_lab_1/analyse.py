@@ -26,11 +26,90 @@ def load_model_from_run(run_dir: str, device: torch.device):
 
 
 def analyse_transform(model, loader, device, transform_fn, strengths):
-    results = {"strength": [], "accuracy": [], "consistency": [], "similarity": []}
+    results = {
+        "strength": [],
+        "accuracy": [],
+        "consistency": [],
+        "similarity": [],
+    }
 
-    # TODO: for every strength, compare original and transformed batches.
-    # Calculate reference predictions/features once per batch.
-    raise NotImplementedError
+    model.eval()
+
+    with torch.no_grad():
+        for strength in strengths:
+            total = 0
+            correct = 0
+            consistent = 0
+            similarity_sum = 0.0
+
+            for images, labels in loader:
+                images = images.to(device)
+                labels = labels.to(device)
+
+                # Reference predictions/features
+                outputs = model(images)
+
+                if isinstance(outputs, tuple):
+                    reference_logits, reference_features = outputs
+                else:
+                    reference_logits = outputs
+                    reference_features = None
+
+                reference_predictions = reference_logits.argmax(dim=1)
+
+                # Transform the batch
+                transformed = transform_fn(images, strength)
+
+                transformed_outputs = model(transformed)
+
+                if isinstance(transformed_outputs, tuple):
+                    transformed_logits, transformed_features = transformed_outputs
+                else:
+                    transformed_logits = transformed_outputs
+                    transformed_features = None
+
+                transformed_predictions = transformed_logits.argmax(dim=1)
+
+                batch_size = labels.size(0)
+                total += batch_size
+
+                # Accuracy on transformed images
+                correct += (
+                    transformed_predictions == labels
+                ).sum().item()
+
+                # Prediction consistency
+                consistent += (
+                    transformed_predictions == reference_predictions
+                ).sum().item()
+
+                # Feature similarity
+                if (
+                    reference_features is not None
+                    and transformed_features is not None
+                ):
+                    reference_flat = reference_features.flatten(start_dim=1)
+                    transformed_flat = transformed_features.flatten(start_dim=1)
+
+                    similarity = torch.nn.functional.cosine_similarity(
+                        reference_flat,
+                        transformed_flat,
+                        dim=1,
+                    )
+
+                    similarity_sum += similarity.sum().item()
+
+            results["strength"].append(strength)
+            results["accuracy"].append(correct / total)
+            results["consistency"].append(consistent / total)
+
+            if total > 0 and reference_features is not None:
+                results["similarity"].append(similarity_sum / total)
+            else:
+                results["similarity"].append(0.0)
+
+    return results
+
 
 
 def plot_results(all_results, output_path: Path):

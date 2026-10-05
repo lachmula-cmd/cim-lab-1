@@ -12,8 +12,9 @@ def prediction_consistency(
     reference_logits: torch.Tensor, transformed_logits: torch.Tensor
 ) -> torch.Tensor:
     """Fraction retaining the reference model prediction."""
-    # TODO: implement this metric.
-    raise NotImplementedError
+    reference_predictions = reference_logits.argmax(dim=1)
+    transformed_predictions = transformed_logits.argmax(dim=1)
+    return (reference_predictions == transformed_predictions).float().mean()
 
 
 def representation_similarity(
@@ -21,4 +22,6 @@ def representation_similarity(
 ) -> torch.Tensor:
     """Mean cosine similarity between paired latent vectors."""
     # TODO: implement this metric using F.cosine_similarity.
-    raise NotImplementedError
+    return F.cosine_similarity(
+        reference_features, transformed_features, dim=1
+    ).mean()
